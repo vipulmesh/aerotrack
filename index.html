@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Aircraft Parts Inventory Tracker - Offline inventory management system">
+    <title>Aircraft Parts Inventory Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <svg class="icon-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                </svg>
+                <div class="header-text">
+                    <h1>Aircraft Parts Inventory</h1>
+                    <div class="header-lines">
+                        <span class="header-line"></span>
+                        <span class="header-line"></span>
+                        <span class="header-line"></span>
+                    </div>
+                </div>
+            </div>
+            <p class="subtitle">Offline Inventory Management System</p>
+            
+            <nav class="header-nav">
+                <button class="nav-btn active" onclick="showPage('inventory')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    Inventory
+                </button>
+                <button class="nav-btn" onclick="showPage('about')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4M12 8h.01"/>
+                    </svg>
+                    About
+                </button>
+            </nav>
+        </header>
+
+        <div id="inventoryPage" class="page-content active">
+            <section class="form-section">
+            <h2>Add New Part</h2>
+            <form id="addPartForm" class="part-form">
+                <div class="form-group">
+                    <label for="partId">Part ID *</label>
+                    <input 
+                        type="text" 
+                        id="partId" 
+                        name="partId" 
+                        placeholder="e.g., APU-2024-001" 
+                        required
+                        pattern="[A-Za-z0-9\-]+"
+                        title="Only letters, numbers, and hyphens allowed"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="partName">Part Name *</label>
+                    <input 
+                        type="text" 
+                        id="partName" 
+                        name="partName" 
+                        placeholder="e.g., Hydraulic Pump Assembly" 
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantity">Quantity *</label>
+                    <input 
+                        type="number" 
+                        id="quantity" 
+                        name="quantity" 
+                        placeholder="0" 
+                        min="0" 
+                        max="99999"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-icon">+</span> Add Part
+                </button>
+            </form>
+        </section>
+
+        <section class="summary-section">
+            <div class="summary-card">
+                <div class="summary-label">Total Parts</div>
+                <div class="summary-value" id="totalParts">0</div>
+            </div>
+            <div class="summary-card summary-warning">
+                <div class="summary-label">Low Stock Items</div>
+                <div class="summary-value" id="lowStockCount">0</div>
+            </div>
+            <div class="summary-card summary-success">
+                <div class="summary-label">Total Quantity</div>
+                <div class="summary-value" id="totalQuantity">0</div>
+            </div>
+        </section>
+
+        <section class="table-section">
+            <div class="table-header">
+                <h2>Parts Inventory</h2>
+                <button id="clearAllBtn" class="btn btn-danger-outline">Clear All Data</button>
+            </div>
+            
+            <div class="table-container">
+                <table id="partsTable" class="parts-table">
+                    <thead>
+                        <tr>
+                            <th>Part ID</th>
+                            <th>Part Name</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="partsTableBody"></tbody>
+                </table>
+                
+                <div id="emptyState" class="empty-state">
+                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <p>No parts in inventory</p>
+                    <p class="empty-subtext">Add your first part using the form above</p>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <div id="aboutPage" class="page-content">
+            <section class="about-section">
+                <div class="about-container">
+                    <div class="about-profile">
+                        <div class="profile-image-container">
+                            <img src="https://via.placeholder.com/150" alt="Profile Picture" class="profile-image" id="profileImage">
+                        </div>
+                        <h2 id="developerName">Your Name Here</h2>
+                        <p class="about-title" id="developerTitle">Aviation Software Engineer</p>
+                    </div>
+
+                    <div class="about-content">
+                        <div class="about-card">
+                            <h3>
+                                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                                About Me
+                            </h3>
+                            <p id="aboutDescription">
+                                Welcome to the Aircraft Parts Inventory Tracker! This application was developed to provide 
+                                a reliable, offline-capable solution for managing aircraft parts inventory. 
+                                <br><br>
+                                Built with clean code principles and aviation industry standards in mind, this tool 
+                                demonstrates professional engineering practices suitable for aerospace applications.
+                            </p>
+                        </div>
+                        </div>
+
+                        <div class="about-card">
+                            <h3>
+                                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                </svg>
+                                Contact Information
+                            </h3>
+                            <div class="contact-info">
+                                <div class="contact-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                        <polyline points="22,6 12,13 2,6"/>
+                                    </svg>
+                                    <a href="mailto:your.email@example.com" id="contactEmail">your.email@example.com</a>
+                                </div>
+                                <div class="contact-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                                    </svg>
+                                    <a href="https://github.com/yourusername" target="_blank" id="contactGithub">github.com/yourusername</a>
+                                </div>
+                                <div class="contact-item">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                                        <rect x="2" y="9" width="4" height="12"/>
+                                        <circle cx="4" cy="4" r="2"/>
+                                    </svg>
+                                    <a href="https://linkedin.com/in/yourprofile" target="_blank" id="contactLinkedin">linkedin.com/in/yourprofile</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="about-card">
+                            <h3>
+                                <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                </svg>
+                                Project Features
+                            </h3>
+                            <ul class="features-list">
+                                <li>✈️ Aviation-grade reliability and performance</li>
+                                <li>📱 Mobile-responsive design for tablets and phones</li>
+                                <li>💾 Offline-first with localStorage persistence</li>
+                                <li>🎨 Professional UI with aviation color scheme</li>
+                                <li>⚡ Fast and lightweight - no frameworks needed</li>
+                                <li>🔒 Client-side only - secure and private</li>
+                                <li>♿ Accessible and keyboard-friendly</li>
+                                <li>📊 Real-time inventory statistics dashboard</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="footer">
+            <p>Last Updated: <span id="lastUpdated">Never</span></p>
+            <p class="footer-note">Data stored locally on device</p>
+        </footer>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Part Quantity</h2>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <form id="editPartForm">
+                <div class="form-group">
+                    <label>Part ID</label>
+                    <input type="text" id="editPartId" disabled class="input-disabled">
+                </div>
+                
+                <div class="form-group">
+                    <label>Part Name</label>
+                    <input type="text" id="editPartName" disabled class="input-disabled">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editQuantity">New Quantity *</label>
+                    <input 
+                        type="number" 
+                        id="editQuantity" 
+                        name="editQuantity" 
+                        min="0" 
+                        max="99999"
+                        required
+                    >
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Confirm Action</h2>
+                <button class="close-btn" id="closeConfirmModal">&times;</button>
+            </div>
+            <p id="confirmMessage" class="confirm-message"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancelConfirm">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmAction">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="about-config.js"></script>
+</body>
+</html>
