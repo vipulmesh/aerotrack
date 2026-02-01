@@ -1,0 +1,11 @@
+{
+  "name": "aerotrack",
+  "version": "1.0.0",
+  "description": "Aircraft Parts Inventory Tracker",
+  "scripts": {
+    "start": "serve ."
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.7.2"
+  }
+}

@@ -8,7 +8,24 @@
 // ==========================================
 
 const STORAGE_KEY = 'aircraftPartsInventory';
+const USER_ID_KEY = 'aircraftPartsUserId';
 const LOW_STOCK_THRESHOLD = 5;
+const API_URL = '/api/inventory';
+
+// ==========================================
+// USER IDENTIFICATION
+// ==========================================
+
+function getUserId() {
+    let userId = localStorage.getItem(USER_ID_KEY);
+    if (!userId) {
+        userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem(USER_ID_KEY, userId);
+    }
+    return userId;
+}
+
+const currentUserId = getUserId();
 
 // ==========================================
 // DOM ELEMENTS
@@ -60,28 +77,87 @@ let currentConfirmAction = null;
 /**
  * Load parts from localStorage
  */
-function loadPartsFromStorage() {
+/**
+ * Load parts from localStorage and sync with Server
+ */
+async function loadPartsFromStorage() {
+    // 1. Load from local storage first (instant UI)
     try {
         const storedParts = localStorage.getItem(STORAGE_KEY);
         if (storedParts) {
             parts = JSON.parse(storedParts);
+            renderParts(); // Render immediately
+            updateSummary();
         }
     } catch (error) {
         console.error('Error loading parts from storage:', error);
         parts = [];
+    }
+
+    // 2. Fetch from Server (Cloud Sync)
+    try {
+        console.log('Fetching from server...');
+        const response = await fetch(`${API_URL}?userId=${currentUserId}`);
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.parts) {
+                // Determine if server has newer data (simple overwrite for now, can be improved with timestamps)
+                console.log('Server data received:', data.parts.length, 'parts');
+
+                // Compare if different to avoid unnecessary re-renders
+                if (JSON.stringify(parts) !== JSON.stringify(data.parts)) {
+                    parts = data.parts;
+                    savePartsToStorage(true); // Save to local, but skip server sync (infinite loop prevention)
+                    renderParts();
+                    updateSummary();
+                    console.log('UI updated from server data');
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('Could not fetch from server (offline mode):', error);
     }
 }
 
 /**
  * Save parts to localStorage
  */
-function savePartsToStorage() {
+/**
+ * Save parts to localStorage and sync to Server
+ * @param {boolean} skipServerSync - If true, only save to local storage (used when pulling from server)
+ */
+async function savePartsToStorage(skipServerSync = false) {
+    // 1. Save to LocalStorage
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parts));
         updateLastUpdated();
     } catch (error) {
         console.error('Error saving parts to storage:', error);
         alert('Error saving data. Storage may be full.');
+    }
+
+    // 2. Sync to Server
+    if (!skipServerSync) {
+        try {
+            // Debounce or just fire-and-forget
+            fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    parts: parts,
+                    updatedAt: new Date().toISOString()
+                })
+            }).then(res => {
+                if (!res.ok) console.warn('Failed to sync to server');
+                else console.log('Successfully synced to server');
+            }).catch(err => console.warn('Offline: waiting for next sync', err));
+        } catch (error) {
+            console.warn('Error initiating sync:', error);
+        }
     }
 }
 
@@ -127,14 +203,14 @@ function addPart(partId, partName, quantity) {
 
     // Add to parts array
     parts.push(newPart);
-    
+
     // Save to storage
     savePartsToStorage();
-    
+
     // Update UI
     renderParts();
     updateSummary();
-    
+
     return true;
 }
 
@@ -221,7 +297,7 @@ function renderParts() {
     // Render each part
     parts.forEach(part => {
         const status = getStatus(part.quantity);
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${escapeHtml(part.id)}</strong></td>
@@ -244,7 +320,7 @@ function renderParts() {
                 </div>
             </td>
         `;
-        
+
         partsTableBody.appendChild(row);
     });
 }
@@ -255,11 +331,11 @@ function renderParts() {
 function updateSummary() {
     // Total parts count
     totalPartsElement.textContent = parts.length;
-    
+
     // Low stock count
     const lowStockCount = parts.filter(part => part.quantity < LOW_STOCK_THRESHOLD).length;
     lowStockCountElement.textContent = lowStockCount;
-    
+
     // Total quantity
     const totalQuantity = parts.reduce((sum, part) => sum + part.quantity, 0);
     totalQuantityElement.textContent = totalQuantity;
@@ -283,22 +359,22 @@ function escapeHtml(text) {
 /**
  * Handle add part form submission
  */
-addPartForm.addEventListener('submit', function(e) {
+addPartForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    
+
     const partId = partIdInput.value.trim();
     const partName = partNameInput.value.trim();
     const quantity = quantityInput.value;
-    
+
     // Validate inputs
     if (!partId || !partName || quantity === '') {
         alert('Please fill in all required fields.');
         return;
     }
-    
+
     // Add part
     const success = addPart(partId, partName, quantity);
-    
+
     // Reset form if successful
     if (success) {
         addPartForm.reset();
@@ -310,15 +386,15 @@ addPartForm.addEventListener('submit', function(e) {
  * Open edit modal for a specific part
  * @param {string} partId - Part ID to edit
  */
-window.openEditModal = function(partId) {
+window.openEditModal = function (partId) {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
-    
+
     currentEditingPartId = partId;
     editPartIdInput.value = part.id;
     editPartNameInput.value = part.name;
     editQuantityInput.value = part.quantity;
-    
+
     editModal.classList.add('active');
     editQuantityInput.focus();
 };
@@ -335,16 +411,16 @@ function closeEditModal() {
 /**
  * Handle edit form submission
  */
-editPartForm.addEventListener('submit', function(e) {
+editPartForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    
+
     const newQuantity = editQuantityInput.value;
-    
+
     if (newQuantity === '' || newQuantity < 0) {
         alert('Please enter a valid quantity.');
         return;
     }
-    
+
     if (currentEditingPartId) {
         updatePartQuantity(currentEditingPartId, newQuantity);
         closeEditModal();
@@ -356,7 +432,7 @@ closeModalBtn.addEventListener('click', closeEditModal);
 cancelEditBtn.addEventListener('click', closeEditModal);
 
 // Close modal when clicking outside
-editModal.addEventListener('click', function(e) {
+editModal.addEventListener('click', function (e) {
     if (e.target === editModal) {
         closeEditModal();
     }
@@ -385,10 +461,10 @@ function closeConfirmModal() {
  * Confirm delete action
  * @param {string} partId - Part ID to delete
  */
-window.confirmDelete = function(partId) {
+window.confirmDelete = function (partId) {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
-    
+
     openConfirmModal(
         `Are you sure you want to delete part "${part.id} - ${part.name}"?`,
         () => deletePart(partId)
@@ -398,12 +474,12 @@ window.confirmDelete = function(partId) {
 /**
  * Confirm clear all action
  */
-clearAllBtn.addEventListener('click', function() {
+clearAllBtn.addEventListener('click', function () {
     if (parts.length === 0) {
         alert('Inventory is already empty.');
         return;
     }
-    
+
     openConfirmModal(
         `Are you sure you want to delete ALL ${parts.length} parts from the inventory? This action cannot be undone.`,
         clearAllParts
@@ -411,7 +487,7 @@ clearAllBtn.addEventListener('click', function() {
 });
 
 // Confirmation modal event listeners
-confirmActionBtn.addEventListener('click', function() {
+confirmActionBtn.addEventListener('click', function () {
     if (currentConfirmAction) {
         currentConfirmAction();
     }
@@ -422,7 +498,7 @@ closeConfirmModalBtn.addEventListener('click', closeConfirmModal);
 cancelConfirmBtn.addEventListener('click', closeConfirmModal);
 
 // Close confirmation modal when clicking outside
-confirmModal.addEventListener('click', function(e) {
+confirmModal.addEventListener('click', function (e) {
     if (e.target === confirmModal) {
         closeConfirmModal();
     }
@@ -438,14 +514,14 @@ confirmModal.addEventListener('click', function(e) {
 function initializeApp() {
     // Load parts from storage
     loadPartsFromStorage();
-    
+
     // Render initial state
     renderParts();
     updateSummary();
-    
+
     // Set focus to first input
     partIdInput.focus();
-    
+
     console.log('Aircraft Parts Inventory Tracker initialized successfully');
 }
 
@@ -464,21 +540,21 @@ if (document.readyState === 'loading') {
  * Show specific page and update navigation
  * @param {string} pageName - Name of the page to show ('inventory' or 'about')
  */
-window.showPage = function(pageName) {
+window.showPage = function (pageName) {
     // Get all page elements
     const inventoryPage = document.getElementById('inventoryPage');
     const aboutPage = document.getElementById('aboutPage');
-    
+
     // Get all navigation buttons
     const navButtons = document.querySelectorAll('.nav-btn');
-    
+
     // Hide all pages
     inventoryPage.classList.remove('active');
     aboutPage.classList.remove('active');
-    
+
     // Remove active class from all nav buttons
     navButtons.forEach(btn => btn.classList.remove('active'));
-    
+
     // Show selected page and activate corresponding button
     if (pageName === 'inventory') {
         inventoryPage.classList.add('active');
@@ -493,7 +569,7 @@ window.showPage = function(pageName) {
 // KEYBOARD SHORTCUTS
 // ==========================================
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     // Close modals with Escape key
     if (e.key === 'Escape') {
         if (editModal.classList.contains('active')) {
