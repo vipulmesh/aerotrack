@@ -1,31 +1,18 @@
 /**
- * AIRCRAFT PARTS INVENTORY TRACKER
- * Offline inventory management system with localStorage persistence
+ * AIRCRAFT PARTS INVENTORY TRACKER - SQLITE VERSION
+ * Offline inventory management with native SQLite storage via Android bridge
  */
 
 // ==========================================
-// CONSTANTS AND CONFIGURATION
+// STORAGE CONFIGURATION
 // ==========================================
 
 const STORAGE_KEY = 'aircraftPartsInventory';
-const USER_ID_KEY = 'aircraftPartsUserId';
 const LOW_STOCK_THRESHOLD = 5;
-const API_URL = '/api/inventory';
 
-// ==========================================
-// USER IDENTIFICATION
-// ==========================================
-
-function getUserId() {
-    let userId = localStorage.getItem(USER_ID_KEY);
-    if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem(USER_ID_KEY, userId);
-    }
-    return userId;
-}
-
-const currentUserId = getUserId();
+// Check if running in Android WebView with SQLite bridge
+let isAndroidBridge = false;
+let storageMode = 'localStorage'; // 'localStorage' or 'sqlite'
 
 // ==========================================
 // DOM ELEMENTS
@@ -74,90 +61,200 @@ let parts = [];
 let currentEditingPartId = null;
 let currentConfirmAction = null;
 
+// ==========================================
+// ANDROID BRIDGE DETECTION & INITIALIZATION
+// ==========================================
+
+/**
+ * Check if Android bridge is available
+ */
+function checkAndroidBridge() {
+    if (typeof Android !== 'undefined') {
+        try {
+            const result = Android.isAndroidBridgeAvailable();
+            if (result === 'true') {
+                isAndroidBridge = true;
+                storageMode = 'sqlite';
+                console.log('✅ Android SQLite bridge detected and active');
+                console.log('📱 Storage mode: SQLite (Native)');
+                return true;
+            }
+        } catch (e) {
+            console.warn('Android bridge check failed:', e);
+        }
+    }
+    
+    console.log('💾 Storage mode: localStorage (Web)');
+    console.log('ℹ️ Running in web browser - using localStorage fallback');
+    return false;
+}
+
+/**
+ * Callback for when Android bridge is ready
+ */
+window.onAndroidBridgeReady = function() {
+    console.log('🔗 Android bridge ready callback triggered');
+    checkAndroidBridge();
+    initializeApp();
+};
+
+// ==========================================
+// SQLITE BRIDGE FUNCTIONS
+// ==========================================
+
+/**
+ * Load parts from SQLite via Android bridge
+ */
+async function loadPartsFromSQLite() {
+    try {
+        const jsonString = Android.getAllParts();
+        console.log('📥 Loaded from SQLite:', jsonString);
+        
+        parts = JSON.parse(jsonString);
+        return true;
+    } catch (error) {
+        console.error('❌ Error loading from SQLite:', error);
+        parts = [];
+        return false;
+    }
+}
+
+/**
+ * Add part to SQLite via Android bridge
+ */
+function addPartToSQLite(partId, partName, quantity) {
+    try {
+        const result = Android.insertPart(partId, partName, quantity);
+        console.log('💾 SQLite insert result:', result);
+        
+        if (result === 'success') {
+            return true;
+        } else if (result.startsWith('error:')) {
+            const errorMsg = result.substring(6);
+            alert(errorMsg);
+            return false;
+        }
+        return false;
+    } catch (error) {
+        console.error('❌ Error adding to SQLite:', error);
+        alert('Error saving to database: ' + error.message);
+        return false;
+    }
+}
+
+/**
+ * Update part in SQLite via Android bridge
+ */
+function updatePartInSQLite(partId, quantity) {
+    try {
+        const result = Android.updatePart(partId, quantity);
+        console.log('🔄 SQLite update result:', result);
+        
+        if (result === 'success') {
+            return true;
+        } else if (result.startsWith('error:')) {
+            const errorMsg = result.substring(6);
+            alert(errorMsg);
+            return false;
+        }
+        return false;
+    } catch (error) {
+        console.error('❌ Error updating SQLite:', error);
+        alert('Error updating database: ' + error.message);
+        return false;
+    }
+}
+
+/**
+ * Delete part from SQLite via Android bridge
+ */
+function deletePartFromSQLite(partId) {
+    try {
+        const result = Android.deletePart(partId);
+        console.log('🗑️ SQLite delete result:', result);
+        
+        if (result === 'success') {
+            return true;
+        } else if (result.startsWith('error:')) {
+            const errorMsg = result.substring(6);
+            alert(errorMsg);
+            return false;
+        }
+        return false;
+    } catch (error) {
+        console.error('❌ Error deleting from SQLite:', error);
+        alert('Error deleting from database: ' + error.message);
+        return false;
+    }
+}
+
+/**
+ * Clear all parts from SQLite via Android bridge
+ */
+function clearAllPartsFromSQLite() {
+    try {
+        const result = Android.clearAllParts();
+        console.log('🧹 SQLite clear all result:', result);
+        
+        if (result === 'success') {
+            return true;
+        } else if (result.startsWith('error:')) {
+            const errorMsg = result.substring(6);
+            alert(errorMsg);
+            return false;
+        }
+        return false;
+    } catch (error) {
+        console.error('❌ Error clearing SQLite:', error);
+        alert('Error clearing database: ' + error.message);
+        return false;
+    }
+}
+
+// ==========================================
+// LOCALSTORAGE FUNCTIONS (FALLBACK)
+// ==========================================
+
 /**
  * Load parts from localStorage
  */
-/**
- * Load parts from localStorage and sync with Server
- */
-async function loadPartsFromStorage() {
-    // 1. Load from local storage first (instant UI)
+function loadPartsFromStorage() {
     try {
         const storedParts = localStorage.getItem(STORAGE_KEY);
         if (storedParts) {
             parts = JSON.parse(storedParts);
-            renderParts(); // Render immediately
-            updateSummary();
         }
     } catch (error) {
-        console.error('Error loading parts from storage:', error);
+        console.error('Error loading parts from localStorage:', error);
         parts = [];
-    }
-
-    // 2. Fetch from Server (Cloud Sync)
-    try {
-        console.log('Fetching from server...');
-        const response = await fetch(`${API_URL}?userId=${currentUserId}`);
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data && data.parts) {
-                // Determine if server has newer data (simple overwrite for now, can be improved with timestamps)
-                console.log('Server data received:', data.parts.length, 'parts');
-
-                // Compare if different to avoid unnecessary re-renders
-                if (JSON.stringify(parts) !== JSON.stringify(data.parts)) {
-                    parts = data.parts;
-                    savePartsToStorage(true); // Save to local, but skip server sync (infinite loop prevention)
-                    renderParts();
-                    updateSummary();
-                    console.log('UI updated from server data');
-                }
-            }
-        }
-    } catch (error) {
-        console.warn('Could not fetch from server (offline mode):', error);
     }
 }
 
 /**
  * Save parts to localStorage
  */
-/**
- * Save parts to localStorage and sync to Server
- * @param {boolean} skipServerSync - If true, only save to local storage (used when pulling from server)
- */
-async function savePartsToStorage(skipServerSync = false) {
-    // 1. Save to LocalStorage
+function savePartsToStorage() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(parts));
         updateLastUpdated();
     } catch (error) {
-        console.error('Error saving parts to storage:', error);
+        console.error('Error saving parts to localStorage:', error);
         alert('Error saving data. Storage may be full.');
     }
+}
 
-    // 2. Sync to Server
-    if (!skipServerSync) {
-        try {
-            // Debounce or just fire-and-forget
-            fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId: currentUserId,
-                    parts: parts,
-                    updatedAt: new Date().toISOString()
-                })
-            }).then(res => {
-                if (!res.ok) console.warn('Failed to sync to server');
-                else console.log('Successfully synced to server');
-            }).catch(err => console.warn('Offline: waiting for next sync', err));
-        } catch (error) {
-            console.warn('Error initiating sync:', error);
-        }
+// ==========================================
+// UNIFIED STORAGE INTERFACE
+// ==========================================
+
+/**
+ * Load parts from current storage (SQLite or localStorage)
+ */
+async function loadParts() {
+    if (storageMode === 'sqlite') {
+        await loadPartsFromSQLite();
+    } else {
+        loadPartsFromStorage();
     }
 }
 
@@ -182,11 +279,8 @@ function updateLastUpdated() {
 
 /**
  * Add a new part to the inventory
- * @param {string} partId - Unique part identifier
- * @param {string} partName - Name of the part
- * @param {number} quantity - Quantity in stock
  */
-function addPart(partId, partName, quantity) {
+async function addPart(partId, partName, quantity) {
     // Check if part ID already exists
     const existingPart = parts.find(part => part.id === partId);
     if (existingPart) {
@@ -194,67 +288,120 @@ function addPart(partId, partName, quantity) {
         return false;
     }
 
-    // Create new part object
-    const newPart = {
-        id: partId,
-        name: partName,
-        quantity: parseInt(quantity, 10)
-    };
+    let success = false;
 
-    // Add to parts array
-    parts.push(newPart);
+    if (storageMode === 'sqlite') {
+        // Add to SQLite
+        success = addPartToSQLite(partId, partName, quantity);
+        if (success) {
+            // Reload from SQLite to get updated data
+            await loadPartsFromSQLite();
+        }
+    } else {
+        // Add to localStorage
+        const newPart = {
+            id: partId,
+            name: partName,
+            quantity: parseInt(quantity, 10)
+        };
+        parts.push(newPart);
+        savePartsToStorage();
+        success = true;
+    }
 
-    // Save to storage
-    savePartsToStorage();
-
-    // Update UI
-    renderParts();
-    updateSummary();
-
-    return true;
+    if (success) {
+        renderParts();
+        updateSummary();
+    }
+    
+    return success;
 }
 
 /**
  * Update the quantity of an existing part
- * @param {string} partId - Part identifier
- * @param {number} newQuantity - New quantity value
  */
-function updatePartQuantity(partId, newQuantity) {
-    const part = parts.find(p => p.id === partId);
-    if (part) {
-        part.quantity = parseInt(newQuantity, 10);
-        savePartsToStorage();
+async function updatePartQuantity(partId, newQuantity) {
+    let success = false;
+
+    if (storageMode === 'sqlite') {
+        // Update in SQLite
+        success = updatePartInSQLite(partId, newQuantity);
+        if (success) {
+            // Reload from SQLite
+            await loadPartsFromSQLite();
+        }
+    } else {
+        // Update in localStorage
+        const part = parts.find(p => p.id === partId);
+        if (part) {
+            part.quantity = parseInt(newQuantity, 10);
+            savePartsToStorage();
+            success = true;
+        }
+    }
+
+    if (success) {
         renderParts();
         updateSummary();
-        return true;
     }
-    return false;
+    
+    return success;
 }
 
 /**
  * Delete a part from the inventory
- * @param {string} partId - Part identifier to delete
  */
-function deletePart(partId) {
-    const index = parts.findIndex(p => p.id === partId);
-    if (index !== -1) {
-        parts.splice(index, 1);
-        savePartsToStorage();
+async function deletePart(partId) {
+    let success = false;
+
+    if (storageMode === 'sqlite') {
+        // Delete from SQLite
+        success = deletePartFromSQLite(partId);
+        if (success) {
+            // Reload from SQLite
+            await loadPartsFromSQLite();
+        }
+    } else {
+        // Delete from localStorage
+        const index = parts.findIndex(p => p.id === partId);
+        if (index !== -1) {
+            parts.splice(index, 1);
+            savePartsToStorage();
+            success = true;
+        }
+    }
+
+    if (success) {
         renderParts();
         updateSummary();
-        return true;
     }
-    return false;
+    
+    return success;
 }
 
 /**
  * Clear all parts from inventory
  */
-function clearAllParts() {
-    parts = [];
-    savePartsToStorage();
-    renderParts();
-    updateSummary();
+async function clearAllParts() {
+    let success = false;
+
+    if (storageMode === 'sqlite') {
+        // Clear SQLite
+        success = clearAllPartsFromSQLite();
+        if (success) {
+            parts = [];
+        }
+    } else {
+        // Clear localStorage
+        parts = [];
+        savePartsToStorage();
+        success = true;
+    }
+
+    if (success) {
+        renderParts();
+        updateSummary();
+    }
 }
 
 // ==========================================
@@ -263,8 +410,6 @@ function clearAllParts() {
 
 /**
  * Get status information based on quantity
- * @param {number} quantity - Part quantity
- * @returns {Object} Status object with class and label
  */
 function getStatus(quantity) {
     if (quantity < LOW_STOCK_THRESHOLD) {
@@ -283,10 +428,8 @@ function getStatus(quantity) {
  * Render all parts in the table
  */
 function renderParts() {
-    // Clear existing rows
     partsTableBody.innerHTML = '';
 
-    // Show/hide empty state
     if (parts.length === 0) {
         emptyState.classList.add('active');
         return;
@@ -294,10 +437,9 @@ function renderParts() {
         emptyState.classList.remove('active');
     }
 
-    // Render each part
     parts.forEach(part => {
         const status = getStatus(part.quantity);
-
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${escapeHtml(part.id)}</strong></td>
@@ -320,7 +462,7 @@ function renderParts() {
                 </div>
             </td>
         `;
-
+        
         partsTableBody.appendChild(row);
     });
 }
@@ -329,22 +471,17 @@ function renderParts() {
  * Update summary statistics
  */
 function updateSummary() {
-    // Total parts count
     totalPartsElement.textContent = parts.length;
-
-    // Low stock count
+    
     const lowStockCount = parts.filter(part => part.quantity < LOW_STOCK_THRESHOLD).length;
     lowStockCountElement.textContent = lowStockCount;
-
-    // Total quantity
+    
     const totalQuantity = parts.reduce((sum, part) => sum + part.quantity, 0);
     totalQuantityElement.textContent = totalQuantity;
 }
 
 /**
  * Escape HTML to prevent XSS attacks
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
  */
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -359,23 +496,20 @@ function escapeHtml(text) {
 /**
  * Handle add part form submission
  */
-addPartForm.addEventListener('submit', function (e) {
+addPartForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-
+    
     const partId = partIdInput.value.trim();
     const partName = partNameInput.value.trim();
     const quantity = quantityInput.value;
-
-    // Validate inputs
+    
     if (!partId || !partName || quantity === '') {
         alert('Please fill in all required fields.');
         return;
     }
-
-    // Add part
-    const success = addPart(partId, partName, quantity);
-
-    // Reset form if successful
+    
+    const success = await addPart(partId, partName, quantity);
+    
     if (success) {
         addPartForm.reset();
         partIdInput.focus();
@@ -384,17 +518,16 @@ addPartForm.addEventListener('submit', function (e) {
 
 /**
  * Open edit modal for a specific part
- * @param {string} partId - Part ID to edit
  */
-window.openEditModal = function (partId) {
+window.openEditModal = function(partId) {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
-
+    
     currentEditingPartId = partId;
     editPartIdInput.value = part.id;
     editPartNameInput.value = part.name;
     editQuantityInput.value = part.quantity;
-
+    
     editModal.classList.add('active');
     editQuantityInput.focus();
 };
@@ -411,28 +544,26 @@ function closeEditModal() {
 /**
  * Handle edit form submission
  */
-editPartForm.addEventListener('submit', function (e) {
+editPartForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-
+    
     const newQuantity = editQuantityInput.value;
-
+    
     if (newQuantity === '' || newQuantity < 0) {
         alert('Please enter a valid quantity.');
         return;
     }
-
+    
     if (currentEditingPartId) {
-        updatePartQuantity(currentEditingPartId, newQuantity);
+        await updatePartQuantity(currentEditingPartId, newQuantity);
         closeEditModal();
     }
 });
 
-// Edit modal close buttons
 closeModalBtn.addEventListener('click', closeEditModal);
 cancelEditBtn.addEventListener('click', closeEditModal);
 
-// Close modal when clicking outside
-editModal.addEventListener('click', function (e) {
+editModal.addEventListener('click', function(e) {
     if (e.target === editModal) {
         closeEditModal();
     }
@@ -440,8 +571,6 @@ editModal.addEventListener('click', function (e) {
 
 /**
  * Open confirmation modal
- * @param {string} message - Confirmation message
- * @param {Function} onConfirm - Callback function on confirmation
  */
 function openConfirmModal(message, onConfirm) {
     confirmMessageElement.textContent = message;
@@ -459,12 +588,11 @@ function closeConfirmModal() {
 
 /**
  * Confirm delete action
- * @param {string} partId - Part ID to delete
  */
-window.confirmDelete = function (partId) {
+window.confirmDelete = function(partId) {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
-
+    
     openConfirmModal(
         `Are you sure you want to delete part "${part.id} - ${part.name}"?`,
         () => deletePart(partId)
@@ -474,20 +602,19 @@ window.confirmDelete = function (partId) {
 /**
  * Confirm clear all action
  */
-clearAllBtn.addEventListener('click', function () {
+clearAllBtn.addEventListener('click', function() {
     if (parts.length === 0) {
         alert('Inventory is already empty.');
         return;
     }
-
+    
     openConfirmModal(
         `Are you sure you want to delete ALL ${parts.length} parts from the inventory? This action cannot be undone.`,
         clearAllParts
     );
 });
 
-// Confirmation modal event listeners
-confirmActionBtn.addEventListener('click', function () {
+confirmActionBtn.addEventListener('click', function() {
     if (currentConfirmAction) {
         currentConfirmAction();
     }
@@ -497,65 +624,26 @@ confirmActionBtn.addEventListener('click', function () {
 closeConfirmModalBtn.addEventListener('click', closeConfirmModal);
 cancelConfirmBtn.addEventListener('click', closeConfirmModal);
 
-// Close confirmation modal when clicking outside
-confirmModal.addEventListener('click', function (e) {
+confirmModal.addEventListener('click', function(e) {
     if (e.target === confirmModal) {
         closeConfirmModal();
     }
 });
 
 // ==========================================
-// INITIALIZATION
-// ==========================================
-
-/**
- * Initialize the application
- */
-function initializeApp() {
-    // Load parts from storage
-    loadPartsFromStorage();
-
-    // Render initial state
-    renderParts();
-    updateSummary();
-
-    // Set focus to first input
-    partIdInput.focus();
-
-    console.log('Aircraft Parts Inventory Tracker initialized successfully');
-}
-
-// Initialize app when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
-
-// ==========================================
 // PAGE NAVIGATION
 // ==========================================
 
-/**
- * Show specific page and update navigation
- * @param {string} pageName - Name of the page to show ('inventory' or 'about')
- */
-window.showPage = function (pageName) {
-    // Get all page elements
+window.showPage = function(pageName) {
     const inventoryPage = document.getElementById('inventoryPage');
     const aboutPage = document.getElementById('aboutPage');
-
-    // Get all navigation buttons
     const navButtons = document.querySelectorAll('.nav-btn');
-
-    // Hide all pages
+    
     inventoryPage.classList.remove('active');
     aboutPage.classList.remove('active');
-
-    // Remove active class from all nav buttons
+    
     navButtons.forEach(btn => btn.classList.remove('active'));
-
-    // Show selected page and activate corresponding button
+    
     if (pageName === 'inventory') {
         inventoryPage.classList.add('active');
         navButtons[0].classList.add('active');
@@ -566,11 +654,52 @@ window.showPage = function (pageName) {
 };
 
 // ==========================================
+// INITIALIZATION
+// ==========================================
+
+/**
+ * Initialize the application
+ */
+async function initializeApp() {
+    console.log('🚀 Initializing Aircraft Parts Inventory Tracker');
+    console.log('📦 Storage Mode:', storageMode);
+    
+    // Load parts from storage
+    await loadParts();
+    
+    // Render initial state
+    renderParts();
+    updateSummary();
+    
+    // Set focus to first input
+    partIdInput.focus();
+    
+    console.log('✅ Aircraft Parts Inventory Tracker initialized successfully');
+    console.log('📊 Total parts loaded:', parts.length);
+}
+
+// ==========================================
+// STARTUP
+// ==========================================
+
+// Check for Android bridge immediately
+if (checkAndroidBridge()) {
+    // Bridge is available, wait for ready callback
+    console.log('⏳ Waiting for Android bridge ready signal...');
+} else {
+    // No bridge, initialize with localStorage
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+        initializeApp();
+    }
+}
+
+// ==========================================
 // KEYBOARD SHORTCUTS
 // ==========================================
 
-document.addEventListener('keydown', function (e) {
-    // Close modals with Escape key
+document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (editModal.classList.contains('active')) {
             closeEditModal();
@@ -578,5 +707,21 @@ document.addEventListener('keydown', function (e) {
         if (confirmModal.classList.contains('active')) {
             closeConfirmModal();
         }
+    }
+});
+
+// ==========================================
+// STORAGE MODE INDICATOR
+// ==========================================
+
+// Add storage mode indicator to footer (optional)
+window.addEventListener('load', function() {
+    const footer = document.querySelector('.footer');
+    if (footer && storageMode === 'sqlite') {
+        const modeIndicator = document.createElement('p');
+        modeIndicator.className = 'footer-note';
+        modeIndicator.innerHTML = '📱 <strong>SQLite Mode:</strong> Data stored in native database';
+        modeIndicator.style.color = '#4CAF50';
+        footer.appendChild(modeIndicator);
     }
 });
