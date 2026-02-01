@@ -1,4 +1,4 @@
-## WebView Android App
+## Aero Inventory
 
 An Android application built using WebView that renders web content
 inside a native Android app with persistent data using local storage.
