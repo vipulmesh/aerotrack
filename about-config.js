@@ -27,11 +27,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // About Me description (can use HTML for formatting)
         description: `
-            Welcome to the AeroTrack! This application was developed to provide 
-            a reliable, offline-capable solution for managing aircraft parts inventory. 
-            <br><br>
-            Built with clean code principles and aviation industry standards in mind, this tool 
-            demonstrates professional engineering practices suitable for aerospace applications.
+            Welcome to the ViA Inventory System! This application was developed to provide 
+            a reliable, offline-capable solution for managing inventory. 
+ 
+                <br> ------------------------------------------ <br>
+                <br> App Version 1.1 -->(Updated on 21 Feb 2025) <br>
+
         `,
         
         // Contact Information
