@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Aircraft Parts Inventory Tracker - Offline inventory management system">
+    <meta name="description" content="Aero Inventory ">
+    
     <title>Aircraft Parts Inventory Tracker</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header class="header">
+            
             <div class="header-content">
-                <svg class="icon-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-                </svg>
                 <div class="header-text">
-                    <h1>Aircraft Parts Inventory</h1>
+                    <h1>ViA Inventory</h1>
                     <div class="header-lines">
                         <span class="header-line"></span>
                         <span class="header-line"></span>
@@ -23,14 +22,15 @@
                     </div>
                 </div>
             </div>
-            <p class="subtitle">Offline Inventory Management System</p>
             
+            <p class="subtitle">Developed with ❤️ by Vipul Meshram</p>
+
             <nav class="header-nav">
                 <button class="nav-btn active" onclick="showPage('inventory')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     </svg>
-                    Inventory
+                    Home
                 </button>
                 <button class="nav-btn" onclick="showPage('about')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -39,104 +39,96 @@
                     </svg>
                     About
                 </button>
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                </button>
             </nav>
         </header>
 
+        <!-- INVENTORY PAGE -->
         <div id="inventoryPage" class="page-content active">
             <section class="form-section">
-            <h2>Add New Part</h2>
-            <form id="addPartForm" class="part-form">
-                <div class="form-group">
-                    <label for="partId">Part ID *</label>
-                    <input 
-                        type="text" 
-                        id="partId" 
-                        name="partId" 
-                        placeholder="e.g., APU-2024-001" 
-                        required
-                        pattern="[A-Za-z0-9\-]+"
-                        title="Only letters, numbers, and hyphens allowed"
-                    >
-                </div>
-                
-                <div class="form-group">
-                    <label for="partName">Part Name *</label>
-                    <input 
-                        type="text" 
-                        id="partName" 
-                        name="partName" 
-                        placeholder="e.g., Hydraulic Pump Assembly" 
-                        required
-                    >
-                </div>
-                
-                <div class="form-group">
-                    <label for="quantity">Quantity *</label>
-                    <input 
-                        type="number" 
-                        id="quantity" 
-                        name="quantity" 
-                        placeholder="0" 
-                        min="0" 
-                        max="99999"
-                        required
-                    >
-                </div>
-                
-                <button type="submit" class="btn btn-primary">
-                    <span class="btn-icon">+</span> Add Part
-                </button>
-            </form>
-        </section>
+                <h2>Add New Part</h2>
+                <form id="addPartForm" class="part-form">
+                    <div class="form-group">
+                        <label for="partId">Part ID *</label>
+                        <input type="text" id="partId" name="partId" placeholder="e.g., APU-2024-001"
+                            required pattern="[A-Za-z0-9\-]+" title="Only letters, numbers, and hyphens allowed">
+                    </div>
+                    <div class="form-group">
+                        <label for="partName">Part Name *</label>
+                        <input type="text" id="partName" name="partName" placeholder="e.g., Hydraulic Pump Assembly" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity *</label>
+                        <input type="number" id="quantity" name="quantity" placeholder="0" min="0" max="99999" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">+</span> Add Part
+                    </button>
+                </form>
+            </section>
 
-        <section class="summary-section">
-            <div class="summary-card">
-                <div class="summary-label">Total Parts</div>
-                <div class="summary-value" id="totalParts">0</div>
-            </div>
-            <div class="summary-card summary-warning">
-                <div class="summary-label">Low Stock Items</div>
-                <div class="summary-value" id="lowStockCount">0</div>
-            </div>
-            <div class="summary-card summary-success">
-                <div class="summary-label">Total Quantity</div>
-                <div class="summary-value" id="totalQuantity">0</div>
-            </div>
-        </section>
-
-        <section class="table-section">
-            <div class="table-header">
-                <h2>Parts Inventory</h2>
-                <button id="clearAllBtn" class="btn btn-danger-outline">Clear All Data</button>
-            </div>
-            
-            <div class="table-container">
-                <table id="partsTable" class="parts-table">
-                    <thead>
-                        <tr>
-                            <th>Part ID</th>
-                            <th>Part Name</th>
-                            <th>Quantity</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="partsTableBody"></tbody>
-                </table>
-                
-                <div id="emptyState" class="empty-state">
-                    <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <p>No parts in inventory</p>
-                    <p class="empty-subtext">Add your first part using the form above</p>
+            <section class="summary-section">
+                <div class="summary-card">
+                    <div class="summary-label">Total Parts</div>
+                    <div class="summary-value" id="totalParts">0</div>
                 </div>
-            </div>
-        </section>
+                <div class="summary-card summary-warning">
+                    <div class="summary-label">Low Stock Items</div>
+                    <div class="summary-value" id="lowStockCount">0</div>
+                </div>
+                <div class="summary-card summary-success">
+                    <div class="summary-label">Total Quantity</div>
+                    <div class="summary-value" id="totalQuantity">0</div>
+                </div>
+            </section>
+
+            <section class="table-section">
+                <div class="table-header">
+                    <h2>Parts Inventory</h2>
+                    <button id="clearAllBtn" class="btn btn-danger-outline">Clear All Data</button>
+                </div>
+                <div class="table-container">
+                    <table id="partsTable" class="parts-table">
+                        <thead>
+                            <tr>
+                                <th>Part ID</th>
+                                <th>Part Name</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partsTableBody"></tbody>
+                    </table>
+                    <div id="emptyState" class="empty-state">
+                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>No parts in inventory</p>
+                        <p class="empty-subtext">Add your first part using the form above</p>
+                    </div>
+                </div>
+            </section>
         </div>
 
+        <!-- ABOUT PAGE -->
         <div id="aboutPage" class="page-content">
             <section class="about-section">
                 <div class="about-container">
@@ -158,13 +150,12 @@
                                 About App
                             </h3>
                             <p id="aboutDescription">
-                                Welcome to the Aircraft Parts Inventory Tracker! This application was developed to provide 
-                                a reliable, offline-capable solution for managing aircraft parts inventory. 
+                                Welcome to the Aircraft Parts Inventory Tracker! This application was developed to provide
+                                a reliable, offline-capable solution for managing aircraft parts inventory.
                                 <br><br>
-                                Built with clean code principles and aviation industry standards in mind, this tool 
+                                Built with clean code principles and aviation industry standards in mind, this tool
                                 demonstrates professional engineering practices suitable for aerospace applications.
                             </p>
-                        </div>
                         </div>
 
                         <div class="about-card">
@@ -207,7 +198,6 @@
                                 Project Features
                             </h3>
                             <ul class="features-list">
-                                <li>✈️ Aviation-grade reliability and performance</li>
                                 <li>📱 Mobile-responsive design for tablets and phones</li>
                                 <li>💾 Offline-first with localStorage persistence</li>
                                 <li>🎨 Professional UI with aviation color scheme</li>
@@ -228,6 +218,7 @@
         </footer>
     </div>
 
+    <!-- EDIT MODAL -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -239,24 +230,14 @@
                     <label>Part ID</label>
                     <input type="text" id="editPartId" disabled class="input-disabled">
                 </div>
-                
                 <div class="form-group">
                     <label>Part Name</label>
                     <input type="text" id="editPartName" disabled class="input-disabled">
                 </div>
-                
                 <div class="form-group">
                     <label for="editQuantity">New Quantity *</label>
-                    <input 
-                        type="number" 
-                        id="editQuantity" 
-                        name="editQuantity" 
-                        min="0" 
-                        max="99999"
-                        required
-                    >
+                    <input type="number" id="editQuantity" name="editQuantity" min="0" max="99999" required>
                 </div>
-                
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -265,6 +246,7 @@
         </div>
     </div>
 
+    <!-- CONFIRM MODAL -->
     <div id="confirmModal" class="modal">
         <div class="modal-content modal-small">
             <div class="modal-header">
@@ -281,8 +263,21 @@
 
     <script src="script.js"></script>
     <script src="about-config.js"></script>
+
+    <!-- Theme Toggle -->
+    <script>
+        const THEME_KEY = 'via-inventory-theme';
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem(THEME_KEY, document.body.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+
+        (function () {
+            if (localStorage.getItem(THEME_KEY) === 'light') {
+                document.body.classList.add('light-mode');
+            }
+        })();
+    </script>
 </body>
 </html>
-
-
-
