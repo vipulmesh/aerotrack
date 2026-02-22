@@ -62,6 +62,57 @@ let currentEditingPartId = null;
 let currentConfirmAction = null;
 
 // ==========================================
+// THEME TOGGLE
+// ==========================================
+
+/**
+ * Inject no-transition style block once into <head>
+ */
+(function injectNoTransitionStyle() {
+    const style = document.createElement('style');
+    style.id = 'no-transition-style';
+    style.textContent = `
+        .no-transition,
+        .no-transition *,
+        .no-transition *::before,
+        .no-transition *::after {
+            transition: none !important;
+            animation: none !important;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+/**
+ * Toggle dark/light theme with instant, lag-free switching
+ */
+function toggleTheme() {
+    const body = document.body;
+
+    // Disable all transitions instantly
+    body.classList.add('no-transition');
+
+    // Toggle theme class
+    body.classList.toggle('light-mode');
+
+    // Force reflow so browser applies the no-transition class before re-enabling
+    void body.offsetHeight;
+
+    // Re-enable transitions after two animation frames (ensures paint has completed)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            body.classList.remove('no-transition');
+        });
+    });
+}
+
+// Bind theme toggle button
+const themeToggleBtn = document.querySelector('.theme-toggle');
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', toggleTheme);
+}
+
+// ==========================================
 // ANDROID BRIDGE DETECTION & INITIALIZATION
 // ==========================================
 
@@ -83,7 +134,7 @@ function checkAndroidBridge() {
             console.warn('Android bridge check failed:', e);
         }
     }
-    
+
     console.log('💾 Storage mode: localStorage (Web)');
     console.log('ℹ️ Running in web browser - using localStorage fallback');
     return false;
@@ -109,7 +160,7 @@ async function loadPartsFromSQLite() {
     try {
         const jsonString = Android.getAllParts();
         console.log('📥 Loaded from SQLite:', jsonString);
-        
+
         parts = JSON.parse(jsonString);
         return true;
     } catch (error) {
@@ -126,7 +177,7 @@ function addPartToSQLite(partId, partName, quantity) {
     try {
         const result = Android.insertPart(partId, partName, quantity);
         console.log('💾 SQLite insert result:', result);
-        
+
         if (result === 'success') {
             return true;
         } else if (result.startsWith('error:')) {
@@ -149,7 +200,7 @@ function updatePartInSQLite(partId, quantity) {
     try {
         const result = Android.updatePart(partId, quantity);
         console.log('🔄 SQLite update result:', result);
-        
+
         if (result === 'success') {
             return true;
         } else if (result.startsWith('error:')) {
@@ -172,7 +223,7 @@ function deletePartFromSQLite(partId) {
     try {
         const result = Android.deletePart(partId);
         console.log('🗑️ SQLite delete result:', result);
-        
+
         if (result === 'success') {
             return true;
         } else if (result.startsWith('error:')) {
@@ -195,7 +246,7 @@ function clearAllPartsFromSQLite() {
     try {
         const result = Android.clearAllParts();
         console.log('🧹 SQLite clear all result:', result);
-        
+
         if (result === 'success') {
             return true;
         } else if (result.startsWith('error:')) {
@@ -291,14 +342,11 @@ async function addPart(partId, partName, quantity) {
     let success = false;
 
     if (storageMode === 'sqlite') {
-        // Add to SQLite
         success = addPartToSQLite(partId, partName, quantity);
         if (success) {
-            // Reload from SQLite to get updated data
             await loadPartsFromSQLite();
         }
     } else {
-        // Add to localStorage
         const newPart = {
             id: partId,
             name: partName,
@@ -313,7 +361,7 @@ async function addPart(partId, partName, quantity) {
         renderParts();
         updateSummary();
     }
-    
+
     return success;
 }
 
@@ -324,14 +372,11 @@ async function updatePartQuantity(partId, newQuantity) {
     let success = false;
 
     if (storageMode === 'sqlite') {
-        // Update in SQLite
         success = updatePartInSQLite(partId, newQuantity);
         if (success) {
-            // Reload from SQLite
             await loadPartsFromSQLite();
         }
     } else {
-        // Update in localStorage
         const part = parts.find(p => p.id === partId);
         if (part) {
             part.quantity = parseInt(newQuantity, 10);
@@ -344,7 +389,7 @@ async function updatePartQuantity(partId, newQuantity) {
         renderParts();
         updateSummary();
     }
-    
+
     return success;
 }
 
@@ -355,14 +400,11 @@ async function deletePart(partId) {
     let success = false;
 
     if (storageMode === 'sqlite') {
-        // Delete from SQLite
         success = deletePartFromSQLite(partId);
         if (success) {
-            // Reload from SQLite
             await loadPartsFromSQLite();
         }
     } else {
-        // Delete from localStorage
         const index = parts.findIndex(p => p.id === partId);
         if (index !== -1) {
             parts.splice(index, 1);
@@ -375,7 +417,7 @@ async function deletePart(partId) {
         renderParts();
         updateSummary();
     }
-    
+
     return success;
 }
 
@@ -386,13 +428,11 @@ async function clearAllParts() {
     let success = false;
 
     if (storageMode === 'sqlite') {
-        // Clear SQLite
         success = clearAllPartsFromSQLite();
         if (success) {
             parts = [];
         }
     } else {
-        // Clear localStorage
         parts = [];
         savePartsToStorage();
         success = true;
@@ -439,7 +479,7 @@ function renderParts() {
 
     parts.forEach(part => {
         const status = getStatus(part.quantity);
-        
+
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>${escapeHtml(part.id)}</strong></td>
@@ -462,7 +502,7 @@ function renderParts() {
                 </div>
             </td>
         `;
-        
+
         partsTableBody.appendChild(row);
     });
 }
@@ -472,10 +512,10 @@ function renderParts() {
  */
 function updateSummary() {
     totalPartsElement.textContent = parts.length;
-    
+
     const lowStockCount = parts.filter(part => part.quantity < LOW_STOCK_THRESHOLD).length;
     lowStockCountElement.textContent = lowStockCount;
-    
+
     const totalQuantity = parts.reduce((sum, part) => sum + part.quantity, 0);
     totalQuantityElement.textContent = totalQuantity;
 }
@@ -498,18 +538,18 @@ function escapeHtml(text) {
  */
 addPartForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const partId = partIdInput.value.trim();
     const partName = partNameInput.value.trim();
     const quantity = quantityInput.value;
-    
+
     if (!partId || !partName || quantity === '') {
         alert('Please fill in all required fields.');
         return;
     }
-    
+
     const success = await addPart(partId, partName, quantity);
-    
+
     if (success) {
         addPartForm.reset();
         partIdInput.focus();
@@ -522,12 +562,12 @@ addPartForm.addEventListener('submit', async function(e) {
 window.openEditModal = function(partId) {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
-    
+
     currentEditingPartId = partId;
     editPartIdInput.value = part.id;
     editPartNameInput.value = part.name;
     editQuantityInput.value = part.quantity;
-    
+
     editModal.classList.add('active');
     editQuantityInput.focus();
 };
@@ -546,14 +586,14 @@ function closeEditModal() {
  */
 editPartForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const newQuantity = editQuantityInput.value;
-    
+
     if (newQuantity === '' || newQuantity < 0) {
         alert('Please enter a valid quantity.');
         return;
     }
-    
+
     if (currentEditingPartId) {
         await updatePartQuantity(currentEditingPartId, newQuantity);
         closeEditModal();
@@ -592,7 +632,7 @@ function closeConfirmModal() {
 window.confirmDelete = function(partId) {
     const part = parts.find(p => p.id === partId);
     if (!part) return;
-    
+
     openConfirmModal(
         `Are you sure you want to delete part "${part.id} - ${part.name}"?`,
         () => deletePart(partId)
@@ -607,7 +647,7 @@ clearAllBtn.addEventListener('click', function() {
         alert('Inventory is already empty.');
         return;
     }
-    
+
     openConfirmModal(
         `Are you sure you want to delete ALL ${parts.length} parts from the inventory? This action cannot be undone.`,
         clearAllParts
@@ -638,12 +678,12 @@ window.showPage = function(pageName) {
     const inventoryPage = document.getElementById('inventoryPage');
     const aboutPage = document.getElementById('aboutPage');
     const navButtons = document.querySelectorAll('.nav-btn');
-    
+
     inventoryPage.classList.remove('active');
     aboutPage.classList.remove('active');
-    
+
     navButtons.forEach(btn => btn.classList.remove('active'));
-    
+
     if (pageName === 'inventory') {
         inventoryPage.classList.add('active');
         navButtons[0].classList.add('active');
@@ -663,17 +703,14 @@ window.showPage = function(pageName) {
 async function initializeApp() {
     console.log('🚀 Initializing Aircraft Parts Inventory Tracker');
     console.log('📦 Storage Mode:', storageMode);
-    
-    // Load parts from storage
+
     await loadParts();
-    
-    // Render initial state
+
     renderParts();
     updateSummary();
-    
-    // Set focus to first input
+
     partIdInput.focus();
-    
+
     console.log('✅ Aircraft Parts Inventory Tracker initialized successfully');
     console.log('📊 Total parts loaded:', parts.length);
 }
@@ -682,12 +719,9 @@ async function initializeApp() {
 // STARTUP
 // ==========================================
 
-// Check for Android bridge immediately
 if (checkAndroidBridge()) {
-    // Bridge is available, wait for ready callback
     console.log('⏳ Waiting for Android bridge ready signal...');
 } else {
-    // No bridge, initialize with localStorage
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initializeApp);
     } else {
@@ -714,7 +748,6 @@ document.addEventListener('keydown', function(e) {
 // STORAGE MODE INDICATOR
 // ==========================================
 
-// Add storage mode indicator to footer (optional)
 window.addEventListener('load', function() {
     const footer = document.querySelector('.footer');
     if (footer && storageMode === 'sqlite') {
